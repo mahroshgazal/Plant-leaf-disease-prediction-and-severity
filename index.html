@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>LeafScan — Plant Disease Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* ── Reset ───────────────────────────────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #080c12;
+      --bg2: #0d1320;
+      --bg3: #111827;
+      --bg4: #1a2234;
+      --bg5: #212d42;
+      --line: rgba(255, 255, 255, .06);
+      --line2: rgba(255, 255, 255, .1);
+      --green: #22d65f;
+      --glow: rgba(34, 214, 95, .15);
+      --glow2: rgba(34, 214, 95, .08);
+      --green2: #16a34a;
+      --gt: #4ade80;
+      --amber: #f59e0b;
+      --at: #fcd34d;
+      --red: #ef4444;
+      --rt: #fca5a5;
+      --blue: #3b82f6;
+      --bt: #93c5fd;
+      --purple: #a855f7;
+      --pt: #d8b4fe;
+      --t1: #f8fafc;
+      --t2: #94a3b8;
+      --t3: #475569;
+      --t4: #334155;
+      --syne: 'Syne', sans-serif;
+      --out: 'Outfit', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --r: 6px;
+      --r2: 10px;
+      --r3: 16px;
+    }
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    body {
+      font-family: var(--out);
+      background: var(--bg);
+      color: var(--t1);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Grid bg ─────────────────────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -40%;
+      left: -20%;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(34, 214, 95, .06) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+    .shell {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1
+    }
+
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--bg2);
+      border-right: 1px solid var(--line2);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 0;
+    }
+
+    .sb-logo {
+      padding: 22px 20px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sb-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--green), #0a9e3a);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+      box-shadow: 0 0 18px var(--glow);
+    }
+
+    .sb-name {
+      font-family: var(--syne);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--t1)
+    }
+
+    .sb-tag {
+      font-size: .62rem;
+      color: var(--t3);
+      font-family: var(--mono);
+      margin-top: 1px
+    }
+
+    .sb-section {
+      padding: 18px 14px 6px;
+      font-size: .62rem;
+      font-weight: 600;
+      color: var(--t4);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-family: var(--mono)
+    }
+
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      margin: 1px 8px;
+      border-radius: var(--r);
+      font-size: .88rem;
+      color: var(--t2);
+      cursor: pointer;
+      transition: all .18s;
+      text-decoration: none;
+    }
+
+    .sb-item:hover {
+      background: var(--bg4);
+      color: var(--t1)
+    }
+
+    .sb-item.active {
+      background: linear-gradient(90deg, rgba(34, 214, 95, .12), transparent);
+      color: var(--green);
+      border-left: 2px solid var(--green);
+      padding-left: 12px
+    }
+
+    .sb-item .ico {
+      font-size: 15px;
+      width: 18px;
+      text-align: center;
+      flex-shrink: 0
+    }
+
+    .sb-bottom {
+      margin-top: auto;
+      padding: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg4);
+      border: 1px solid var(--line2);
+      border-radius: 99px;
+      padding: 7px 12px;
+      font-size: .78rem;
+      color: var(--t2);
+      font-family: var(--mono);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--t4);
+      flex-shrink: 0;
+      transition: all .3s
+    }
+
+    .dot.on {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green)
+    }
+
+    .dot.off {
+      background: var(--red)
+    }
+
+    /* ── Main content ────────────────────────────────────────────────────────── */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0
+    }
+
+    /* ── Topbar ──────────────────────────────────────────────────────────────── */
+    .topbar {
+      height: 56px;
+      border-bottom: 1px solid var(--line2);
+      background: rgba(13, 19, 32, .8);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .tb-left {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .tb-breadcrumb {
+      font-size: .8rem;
+      color: var(--t3);
+      font-family: var(--mono)
+    }
+
+    .tb-breadcrumb span {
+      color: var(--t2)
+    }
+
+    .tb-right {
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
+
+    .badge {
+      font-size: .7rem;
+      font-weight: 600;
+      font-family: var(--mono);
+      padding: 3px 10px;
+      border-radius: 99px;
+      letter-spacing: .04em;
+    }
+
+    .badge-demo {
+      background: rgba(245, 158, 11, .15);
+      color: var(--at);
+      border: 1px solid rgba(245, 158, 11, .25);
+      display: none
+    }
+
+    .badge-demo.show {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .badge-live {
+      background: rgba(34, 214, 95, .12);
+      color: var(--gt);
+      border: 1px solid rgba(34, 214, 95, .22);
+      display: none
+    }
+
+    .badge-live.show {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    /* ── Page body ───────────────────────────────────────────────────────────── */
+    .page {
+      padding: 28px 28px 60px;
+      display: grid;
+      gap: 20px
+    }
+
+    /* ── Stat row ────────────────────────────────────────────────────────────── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px
+    }
+
+    .stat-card {
+      background: var(--bg3);
+      border: 1px solid var(--line2);
+      border-radius: var(--r2);
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color .2s;
+    }
+
+    .stat-card:hover {
+      border-color: var(--line2)
+    }
+
+    .stat-label {
+      font-size: .7rem;
+      color: var(--t3);
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .08em
+    }
+
+    .stat-val {
+      font-family: var(--syne);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--t1);
+      line-height: 1
+    }
+
+    .stat-sub {
+      font-size: .72rem;
+      color: var(--t3)
+    }
+
+    .stat-g {
+      color: var(--gt)
+    }
+
+    .stat-a {
+      color: var(--at)
+    }
+
+    .stat-b {
+      color: var(--bt)
+    }
+
+    /* ── Two-column layout ───────────────────────────────────────────────────── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 20px;
+      align-items: start
+    }
+
+    /* ── Panel ───────────────────────────────────────────────────────────────── */
+    .panel {
+      background: var(--bg3);
+      border: 1px solid var(--line2);
+      border-radius: var(--r3);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-family: var(--syne);
+      font-size: .9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title .ico {
+      font-size: 14px
+    }
+
+    .panel-sub {
+      font-size: .72rem;
+      color: var(--t3);
+      font-family: var(--mono)
+    }
+
+    /* ── Upload zone ─────────────────────────────────────────────────────────── */
+    .drop-zone {
+      margin: 18px;
+      border: 1.5px dashed var(--line2);
+      border-radius: var(--r2);
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .22s;
+      position: relative;
+      background: var(--bg2);
+    }
+
+    .drop-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag {
+      border-color: var(--green);
+      background: rgba(34, 214, 95, .04);
+    }
+
+    .drop-zone:hover .di,
+    .drop-zone.drag .di {
+      transform: translateY(-4px) scale(1.08);
+      box-shadow: 0 8px 28px var(--glow);
+    }
+
+    .di {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 14px;
+      background: rgba(34, 214, 95, .1);
+      border: 1px solid rgba(34, 214, 95, .2);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      transition: all .3s;
+    }
+
+    .drop-zone h3 {
+      font-family: var(--syne);
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px
+    }
+
+    .drop-zone p {
+      font-size: .8rem;
+      color: var(--t3);
+      line-height: 1.6
+    }
+
+    /* ── Preview ─────────────────────────────────────────────────────────────── */
+    .preview-wrap {
+      margin: 18px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .preview-wrap.show {
+      display: flex
+    }
+
+    .preview-frame {
+      width: 100%;
+      aspect-ratio: 1;
+      max-width: 260px;
+      border-radius: var(--r2);
+      overflow: hidden;
+      border: 1px solid var(--line2);
+      position: relative;
+      background: var(--bg4);
+    }
+
+    .preview-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover
+    }
+
+    .preview-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, .5) 0%, transparent 50%);
+      display: flex;
+      align-items: flex-end;
+      padding: 10px;
+    }
+
+    .preview-name {
+      font-size: .72rem;
+      color: rgba(255, 255, 255, .8);
+      font-family: var(--mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 260px
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────────── */
+    .btn {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: var(--r);
+      font-family: var(--out);
+      font-size: .85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .18s;
+      border: 1px solid var(--line2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #061209;
+      border-color: var(--green);
+      font-weight: 600;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #1fc453;
+      box-shadow: 0 4px 20px var(--glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--t3)
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg4);
+      color: var(--t2)
+    }
+
+    .spin {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(6, 18, 9, .3);
+      border-top-color: #061209;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: none;
+    }
+
+    .btn-primary.loading .spin {
+      display: block
+    }
+
+    .btn-primary.loading .bl {
+      display: none
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* ── Result panel ────────────────────────────────────────────────────────── */
+    .result-panel {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity .4s, transform .4s;
+      pointer-events: none;
+    }
+
+    .result-panel.show {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto
+    }
+
+    /* ── Result header ───────────────────────────────────────────────────────── */
+    .res-head {
+      padding: 18px 20px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(135deg, var(--bg4), var(--bg3));
+    }
+
+    .res-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px
+    }
+
+    .res-chip {
+      font-size: .68rem;
+      font-weight: 600;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 3px 10px;
+      border-radius: 99px;
+    }
+
+    .chip-h {
+      background: rgba(34, 214, 95, .15);
+      color: var(--gt);
+      border: 1px solid rgba(34, 214, 95, .25)
+    }
+
+    .chip-f {
+      background: rgba(245, 158, 11, .13);
+      color: var(--at);
+      border: 1px solid rgba(245, 158, 11, .22)
+    }
+
+    .chip-b {
+      background: rgba(239, 68, 68, .13);
+      color: var(--rt);
+      border: 1px solid rgba(239, 68, 68, .22)
+    }
+
+    .chip-v {
+      background: rgba(168, 85, 247, .13);
+      color: var(--pt);
+      border: 1px solid rgba(168, 85, 247, .22)
+    }
+
+    .chip-p {
+      background: rgba(59, 130, 246, .13);
+      color: var(--bt);
+      border: 1px solid rgba(59, 130, 246, .22)
+    }
+
+    .res-plant {
+      font-size: .7rem;
+      color: var(--t3);
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 3px
+    }
+
+    .res-disease {
+      font-family: var(--syne);
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--t1);
+      line-height: 1.2;
+    }
+
+    .conf-block {
+      text-align: right;
+      flex-shrink: 0
+    }
+
+    .conf-num {
+      font-family: var(--syne);
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .conf-label {
+      font-size: .65rem;
+      color: var(--t3);
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .08em
+    }
+
+    /* ── Confidence bar ──────────────────────────────────────────────────────── */
+    .conf-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .conf-bar-bg {
+      flex: 1;
+      height: 4px;
+      background: var(--bg5);
+      border-radius: 99px;
+      overflow: hidden
+    }
+
+    .conf-bar {
+      height: 100%;
+      border-radius: 99px;
+      width: 0;
+      transition: width 1s cubic-bezier(.16, 1, .3, 1)
+    }
+
+    .conf-pct-sm {
+      font-size: .75rem;
+      font-family: var(--mono);
+      color: var(--t3);
+      min-width: 40px;
+      text-align: right
+    }
+
+    /* ── Result body ─────────────────────────────────────────────────────────── */
+    .res-body {
+      padding: 16px 20px
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 20px;
+      margin-bottom: 14px
+    }
+
+    .ig-item label {
+      display: block;
+      font-size: .63rem;
+      font-weight: 600;
+      color: var(--t4);
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      font-family: var(--mono);
+      margin-bottom: 3px;
+    }
+
+    .ig-item span {
+      font-size: .85rem;
+      color: var(--t2)
+    }
+
+    .advice {
+      background: var(--bg4);
+      border: 1px solid var(--line2);
+      border-left: 3px solid var(--green);
+      border-radius: var(--r);
+      padding: 12px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .advice-ico {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px
+    }
+
+    .advice p {
+      font-size: .83rem;
+      line-height: 1.7;
+      color: var(--t2)
+    }
+
+    .advice strong {
+      color: var(--t1)
+    }
+
+    /* ── Alternatives ────────────────────────────────────────────────────────── */
+    .alts {
+      padding: 14px 20px;
+      border-top: 1px solid var(--line)
+    }
+
+    .alts-title {
+      font-size: .65rem;
+      font-weight: 600;
+      color: var(--t4);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-family: var(--mono);
+      margin-bottom: 10px
+    }
+
+    .alt-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 0
+    }
+
+    .alt-info {
+      flex: 1
+    }
+
+    .alt-name {
+      font-size: .8rem;
+      color: var(--t2);
+      margin-bottom: 4px
+    }
+
+    .alt-bar-bg {
+      height: 3px;
+      background: var(--bg5);
+      border-radius: 99px;
+      overflow: hidden
+    }
+
+    .alt-bar {
+      height: 100%;
+      background: var(--bg5);
+      border-radius: 99px;
+      width: 0;
+      transition: width .9s cubic-bezier(.16, 1, .3, 1)
+    }
+
+    .alt-pct {
+      font-size: .75rem;
+      font-family: var(--mono);
+      color: var(--t3);
+      min-width: 38px;
+      text-align: right
+    }
+
+    /* ── Demo notice ─────────────────────────────────────────────────────────── */
+    .demo-notice {
+      margin: 0 20px 16px;
+      background: rgba(245, 158, 11, .08);
+      border: 1px solid rgba(245, 158, 11, .2);
+      border-radius: var(--r);
+      padding: 10px 14px;
+      font-size: .78rem;
+      color: var(--at);
+      line-height: 1.6;
+      display: none;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .demo-notice.show {
+      display: flex
+    }
+
+    /* ── History panel ───────────────────────────────────────────────────────── */
+    .history-panel {
+      grid-column: 1/-1
+    }
+
+    .hist-empty {
+      padding: 32px;
+      text-align: center;
+      color: var(--t4);
+      font-size: .85rem;
+      font-family: var(--mono);
+    }
+
+    .hist-row {
+      display: grid;
+      grid-template-columns: 36px 1fr 100px 90px 80px;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--line);
+      transition: background .15s;
+    }
+
+    .hist-row:hover {
+      background: var(--bg4)
+    }
+
+    .hist-row:last-child {
+      border-bottom: none
+    }
+
+    .hist-header.hist-row {
+      background: var(--bg4);
+      font-size: .65rem;
+      color: var(--t4);
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .hist-thumb {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid var(--line2);
+      background: var(--bg5);
+    }
+
+    .hist-plant {
+      font-size: .8rem;
+      color: var(--t1);
+      font-weight: 500
+    }
+
+    .hist-disease {
+      font-size: .72rem;
+      color: var(--t3)
+    }
+
+    .hist-conf {
+      font-family: var(--mono);
+      font-size: .8rem
+    }
+
+    .hist-type .res-chip {
+      font-size: .62rem
+    }
+
+    .hist-time {
+      font-size: .72rem;
+      color: var(--t3);
+      font-family: var(--mono)
+    }
+
+    /* ── Error ───────────────────────────────────────────────────────────────── */
+    .err-box {
+      margin: 0 18px 12px;
+      background: rgba(239, 68, 68, .08);
+      border: 1px solid rgba(239, 68, 68, .2);
+      border-radius: var(--r);
+      padding: 10px 14px;
+      font-size: .8rem;
+      color: var(--rt);
+      display: none;
+    }
+
+    .err-box.show {
+      display: block
+    }
+
+    /* ── Animations ──────────────────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(14px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .stat-card {
+      animation: fadeUp .5s ease both
+    }
+
+    .stat-card:nth-child(2) {
+      animation-delay: .06s
+    }
+
+    .stat-card:nth-child(3) {
+      animation-delay: .12s
+    }
+
+    .stat-card:nth-child(4) {
+      animation-delay: .18s
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────────────────── */
+    @media(max-width:900px) {
+      .sidebar {
+        display: none
+      }
+
+      .two-col {
+        grid-template-columns: 1fr
+      }
+
+      .stat-row {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    @media(max-width:500px) {
+      .stat-row {
+        grid-template-columns: 1fr
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr
+      }
+
+      .page {
+        padding: 16px 16px 40px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+
+    <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+    <aside class="sidebar">
+      <div class="sb-logo">
+        <div class="sb-icon">🌿</div>
+        <div>
+          <div class="sb-name">LeafScan</div>
+          <div class="sb-tag">v1.0 · PlantVillage</div>
+        </div>
+      </div>
+
+      <div class="sb-section">Navigation</div>
+      <a class="sb-item active" href="#">
+        <span class="ico">🔬</span> Diagnose
+      </a>
+      <a class="sb-item" href="#history">
+        <span class="ico">📋</span> History
+      </a>
+
+      <div class="sb-section">Dataset</div>
+      <a class="sb-item" href="#" onclick="return false">
+        <span class="ico">🌱</span> 38 Classes
+      </a>
+      <a class="sb-item" href="#" onclick="return false">
+        <span class="ico">📊</span> 54K Images
+      </a>
+
+      <div class="sb-bottom">
+        <div class="status-pill">
+          <div class="dot" id="dot"></div>
+          <span id="statusTxt" style="font-size:.72rem">Connecting…</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Content ──────────────────────────────────────────────────────────── -->
+    <div class="content">
+
+      <!-- Topbar -->
+      <div class="topbar">
+        <div class="tb-left">
+          <span class="tb-breadcrumb">LeafScan / <span>Diagnose</span></span>
+        </div>
+        <div class="tb-right">
+          <span class="badge badge-demo" id="badgeDemo">⚗ Demo Mode</span>
+          <span class="badge badge-live" id="badgeLive">● Live</span>
+        </div>
+      </div>
+
+      <!-- Page -->
+      <div class="page">
+
+        <!-- Stat row -->
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-label">Total Scans</div>
+            <div class="stat-val" id="scanCount">0</div>
+            <div class="stat-sub">this session</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Diseases Found</div>
+            <div class="stat-val stat-a" id="diseaseCount">0</div>
+            <div class="stat-sub">infected results</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Healthy Scans</div>
+            <div class="stat-val stat-g" id="healthyCount">0</div>
+            <div class="stat-sub">clean results</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Avg Confidence</div>
+            <div class="stat-val stat-b" id="avgConf">—</div>
+            <div class="stat-sub">model certainty</div>
+          </div>
+        </div>
+
+        <!-- Two-col: upload + result -->
+        <div class="two-col">
+
+          <!-- Upload panel -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><span class="ico">📤</span> Upload Leaf Image</div>
+              <div class="panel-sub">JPEG · PNG · WebP</div>
+            </div>
+
+            <!-- Drop zone -->
+            <div class="drop-zone" id="dropZone">
+              <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" />
+              <div class="di">🍃</div>
+              <h3>Drop leaf photo here</h3>
+              <p>Drag & drop or click to browse<br />Clear close-up in natural daylight works best</p>
+            </div>
+
+            <!-- Preview -->
+            <div class="preview-wrap" id="previewWrap">
+              <div class="preview-frame">
+                <img id="previewImg" src="" alt="" />
+                <div class="preview-overlay">
+                  <span class="preview-name" id="previewName"></span>
+                </div>
+              </div>
+              <div class="btn-row">
+                <button class="btn btn-ghost" onclick="clearImg()">✕ Remove</button>
+                <button class="btn btn-primary" id="predictBtn" disabled onclick="predict()">
+                  <div class="spin"></div>
+                  <span class="bl">🔍 Analyse</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="err-box" id="errBox"></div>
+          </div>
+
+          <!-- Result panel -->
+          <div class="panel result-panel" id="resultPanel">
+            <div class="panel-header">
+              <div class="panel-title"><span class="ico">📊</span> Diagnosis Result</div>
+              <div class="panel-sub" id="resultTime">—</div>
+            </div>
+
+            <div class="demo-notice" id="demoNotice">
+              <span>⚗️</span>
+              <span><strong>Demo mode</strong> — paste your ngrok URL into <code
+                  style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size:.75rem">const API</code>
+                at the top of this file and reload, then upload your model to Colab.</span>
+            </div>
+
+            <div class="res-head" id="resHead"></div>
+            <div class="res-body" id="resBody"></div>
+            <div class="alts" id="resAlts"></div>
+          </div>
+
+        </div><!-- /two-col -->
+
+        <!-- History -->
+        <div class="panel history-panel" id="history">
+          <div class="panel-header">
+            <div class="panel-title"><span class="ico">📋</span> Scan History</div>
+            <div class="panel-sub" id="histCount">0 records</div>
+          </div>
+          <div class="hist-header hist-row">
+            <div></div>
+            <div>Plant / Disease</div>
+            <div>Confidence</div>
+            <div>Type</div>
+            <div>Time</div>
+          </div>
+          <div id="histBody">
+            <div class="hist-empty">No scans yet — upload a leaf image above</div>
+          </div>
+        </div>
+
+      </div><!-- /page -->
+    </div><!-- /content -->
+  </div><!-- /shell -->
+
+  <script>
+    // ══════════════════════════════════════════════════════════════════════════════
+    // CONFIG — paste your ngrok URL here after running the Colab cell
+    // ══════════════════════════════════════════════════════════════════════════════
+    const API = 'http://127.0.0.1:5000';   // e.g. 'https://abc123.ngrok-free.app'
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    let file = null;
+    let scans = 0;
+    let diseases = 0;
+    let healthys = 0;
+    let confTotal = 0;
+    let history = [];
+
+    // ── Health check ───────────────────────────────────────────────────────────
+    async function checkHealth() {
+      try {
+        const r = await fetch(`${API}/health`, { signal: AbortSignal.timeout(4000) });
+        const d = await r.json();
+        document.getElementById('dot').className = 'dot on';
+        document.getElementById('statusTxt').textContent = d.demo_mode ? 'Demo mode' : 'Model live';
+        if (d.demo_mode) {
+          document.getElementById('badgeDemo').classList.add('show');
+        } else {
+          document.getElementById('badgeLive').classList.add('show');
+        }
+      } catch {
+        document.getElementById('dot').className = 'dot off';
+        document.getElementById('statusTxt').textContent = 'Offline';
+      }
+    }
+    checkHealth();
+    setInterval(checkHealth, 20000);
+
+    // ── Drag & drop ────────────────────────────────────────────────────────────
+    const dz = document.getElementById('dropZone');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('drag');
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+    document.getElementById('fileInput').addEventListener('change', e => {
+      if (e.target.files[0]) setFile(e.target.files[0]);
+    });
+
+    function setFile(f) {
+      if (!f.type.startsWith('image/')) { showErr('Please upload an image file.'); return; }
+      if (f.size > 10 * 1024 * 1024) { showErr('File too large (max 10 MB).'); return; }
+      file = f;
+      const url = URL.createObjectURL(f);
+      document.getElementById('previewImg').src = url;
+      document.getElementById('previewName').textContent = f.name;
+      dz.style.display = 'none';
+      document.getElementById('previewWrap').classList.add('show');
+      document.getElementById('predictBtn').disabled = false;
+      document.getElementById('resultPanel').classList.remove('show');
+      hideErr();
+    }
+
+    function clearImg() {
+      file = null;
+      document.getElementById('fileInput').value = '';
+      dz.style.display = 'block';
+      document.getElementById('previewWrap').classList.remove('show');
+      document.getElementById('predictBtn').disabled = true;
+      document.getElementById('resultPanel').classList.remove('show');
+      hideErr();
+    }
+
+    // ── Predict ────────────────────────────────────────────────────────────────
+    async function predict() {
+      if (!file) return;
+      const btn = document.getElementById('predictBtn');
+      btn.classList.add('loading'); btn.disabled = true;
+      hideErr();
+
+      const t0 = Date.now();
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch(`${API}/predict`, { method: 'POST', body: form });
+        const data = await res.json();   // ✅ read ONCE
+        console.log(data);
+        if (!res.ok) {
+          throw new Error(e.error || `HTTP ${res.status}`);
+        }
+        const ms = Date.now() - t0;
+        render(data, ms);
+        addHistory(data, file.name, ms);
+        updateStats(data);
+      } catch (e) {
+        console.error(e);
+        showErr(`Error: ${e.message}`);
+      } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
+    }
+
+    // ── Render result ──────────────────────────────────────────────────────────
+    function chipClass(type, healthy) {
+      if (healthy) return 'chip-h';
+      if (type === 'Fungal') return 'chip-f';
+      if (type === 'Bacterial') return 'chip-b';
+      if (type === 'Viral') return 'chip-v';
+      if (type === 'Pest') return 'chip-p';
+      return 'chip-f';
+    }
+    function confColor(c) {
+      if (c >= 80) return 'var(--gt)';
+      if (c >= 55) return 'var(--at)';
+      return 'var(--rt)';
+    }
+    function barColor(c) {
+      if (c >= 80) return 'var(--green)';
+      if (c >= 55) return 'var(--amber)';
+      return 'var(--red)';
+    }
+
+    function render(data, ms) {
+      const p = data.prediction;
+      const cc = chipClass(p.type, p.is_healthy);
+      const col = confColor(p.confidence);
+
+      // Demo notice
+      document.getElementById('demoNotice').className = 'demo-notice' + (data.demo_mode ? ' show' : '');
+
+      // Time
+      document.getElementById('resultTime').textContent = `${ms}ms`;
+
+      // Header
+      document.getElementById('resHead').innerHTML = `
+    <div class="res-top">
+      <div>
+        <div style="margin-bottom:8px"><span class="res-chip ${cc}">${p.is_healthy ? '✓ Healthy' : '⚠ ' + p.type}</span></div>
+        <div class="res-plant">${p.plant}</div>
+        <div class="res-disease">${p.disease.replace(/_/g, ' ')}</div>
+      </div>
+      <div class="conf-block">
+        <div class="conf-num" style="color:${col}">${p.confidence}%</div>
+        <div class="conf-label">Confidence</div>
+      </div>
+    </div>
+    <div class="conf-bar-wrap">
+      <div class="conf-bar-bg">
+        <div class="conf-bar" id="mainBar" style="background:${barColor(p.confidence)}"></div>
+      </div>
+      <div class="conf-pct-sm">${p.confidence}%</div>
+    </div>
+  `;
+
+      // Body
+      document.getElementById('resBody').innerHTML = `
+    <div class="info-grid">
+      <div class="ig-item"><label>Plant species</label><span>${p.plant}</span></div>
+      <div class="ig-item"><label>Disease type</label><span>${p.type}</span></div>
+      <div class="ig-item"><label>Status</label><span style="color:${p.is_healthy ? 'var(--gt)' : 'var(--at)'}">${p.is_healthy ? 'Healthy' : 'Infected'}</span></div>
+      <div class="ig-item"><label>Class ID</label><span style="font-size:.72rem;font-family:var(--mono);color:var(--t3)">${p.class}</span></div>
+    </div>
+    <div class="advice">
+      <span class="advice-ico">${p.is_healthy ? '🌱' : '💊'}</span>
+      <p><strong>Recommendation:</strong> ${p.advice}</p>
+    </div>
+  `;
+
+      // Alternatives
+      document.getElementById('resAlts').innerHTML = `
+    <div class="alts-title">Top-5 Predictions</div>
+    ${data.alternatives.map(a => `
+      <div class="alt-row">
+        <div class="alt-info">
+          <div class="alt-name">${a.plant} · ${a.disease.replace(/_/g, ' ')}</div>
+          <div class="alt-bar-bg"><div class="alt-bar" data-w="${a.confidence}" style="background:${barColor(a.confidence)}"></div></div>
+        </div>
+        <div class="alt-pct">${a.confidence}%</div>
+      </div>`).join('')}
+  `;
+
+      document.getElementById('resultPanel').classList.add('show');
+      document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      // Animate bars
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const mb = document.getElementById('mainBar');
+        if (mb) mb.style.width = p.confidence + '%';
+        document.querySelectorAll('.alt-bar').forEach(b => b.style.width = b.dataset.w + '%');
+      }));
+    }
+
+    // ── Stats ──────────────────────────────────────────────────────────────────
+    function updateStats(data) {
+      scans++;
+      confTotal += data.prediction.confidence;
+      if (data.prediction.is_healthy) healthys++; else diseases++;
+      document.getElementById('scanCount').textContent = scans;
+      document.getElementById('diseaseCount').textContent = diseases;
+      document.getElementById('healthyCount').textContent = healthys;
+      document.getElementById('avgConf').textContent = Math.round(confTotal / scans) + '%';
+    }
+
+    // ── History ────────────────────────────────────────────────────────────────
+    function addHistory(data, fname, ms) {
+      const p = data.prediction;
+      const now = new Date().toLocaleTimeString();
+      history.unshift({ p, fname, ms, now, img: document.getElementById('previewImg').src });
+      document.getElementById('histCount').textContent = history.length + ' record' + (history.length !== 1 ? 's' : '');
+
+      const body = document.getElementById('histBody');
+      body.innerHTML = history.map((h, i) => `
+    <div class="hist-row" style="animation:fadeUp .3s ${i * 0.04}s ease both">
+      <img class="hist-thumb" src="${h.img}" alt=""/>
+      <div>
+        <div class="hist-plant">${h.p.plant}</div>
+        <div class="hist-disease">${h.p.disease.replace(/_/g, ' ')}</div>
+      </div>
+      <div class="hist-conf" style="color:${confColor(h.p.confidence)}">${h.p.confidence}%</div>
+      <div class="hist-type"><span class="res-chip ${chipClass(h.p.type, h.p.is_healthy)}">${h.p.type}</span></div>
+      <div class="hist-time">${h.now}</div>
+    </div>
+  `).join('');
+    }
+
+    // ── Error helpers ──────────────────────────────────────────────────────────
+    function showErr(msg) {
+      const el = document.getElementById('errBox');
+      el.textContent = msg; el.classList.add('show');
+    }
+    function hideErr() {
+      document.getElementById('errBox').classList.remove('show');
+    }
+  </script>
+</body>
+
+</html>
